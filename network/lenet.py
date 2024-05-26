@@ -2,23 +2,52 @@ import torch
 import torch.nn as nn
 
 class LeNet5(nn.Module):
-    def __init__(self, num_class):
+    def __init__(self, num_class,num_ch1=6,num_ch2=16):
         super(LeNet5, self).__init__()
-        self.conv1 = nn.Conv2d(1, 6, kernel_size=5, stride=1, padding=2)
+        self.out_chn = num_ch2
+        self.conv1 = nn.Conv2d(1, num_ch1, kernel_size=5, stride=1, padding=2)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        self.conv2 = nn.Conv2d(6, 16, kernel_size=5, stride=1, padding=0)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.conv2 = nn.Conv2d(num_ch1, num_ch2, kernel_size=5, stride=1, padding=0)
+        self.fc1 = nn.Linear(num_ch2 * 5 * 5, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, num_class)
 
     def forward(self, x):
         x = self.pool(torch.relu(self.conv1(x)))
         x = self.pool(torch.relu(self.conv2(x)))
+        x = x.view(-1, self.out_chn * 5 * 5)
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+class LeNet5_bn(LeNet5):
+    def __init__(self,num_classes=10):
+        super(LeNet5_bn,self).__init__(num_classes)
+        self.bn1 = nn.BatchNorm2d(6)
+        self.bn2 = nn.BatchNorm2d(16)
+    def forward(self, x):
+        x = self.pool(torch.relu(self.bn1(self.conv1(x))))
+        x = self.pool(torch.relu(self.bn2(self.conv2(x))))
         x = x.view(-1, 16 * 5 * 5)
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+
+class LeNet5_dp(LeNet5):
+    def __init__(self,num_classes=10):
+        super(LeNet5_dp,self).__init__(num_classes)
+        self.dp = nn.Dropout(p=0.5)
+    def forward(self, x):
+        x = self.pool(torch.relu(self.conv1(x)))
+        x = self.pool(torch.relu(self.conv2(x)))
+        x = x.view(-1, 16 * 5 * 5)
+        x = torch.relu(self.dp(self.fc1(x)))
+        x = torch.relu(self.dp(self.fc2(x)))
+        x = self.fc3(x)
+        return x
+
 
 class LeNet6(nn.Module):
     def __init__(self, num_class):
